@@ -208,8 +208,6 @@ async function handleLogin() {
       setTimeout(() => {
         window.location.reload()
       }, 1000)
-    } else {
-      message.error(authStore.error || '登录失败')
     }
   } catch (e) {
   } finally {

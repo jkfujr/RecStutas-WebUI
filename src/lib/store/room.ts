@@ -57,15 +57,13 @@ export const useRoomStore = defineStore('room', {
     ],
     filteredRooms: (state) => {
       let result = state.rooms;
-      
-      // 根据类型筛选
+
       if (state.filterType !== 'all') {
         result = result.filter((room: RoomData) => {
           return room.recServer.recType === state.filterType;
         });
       }
       
-      // 根据状态筛选
       if (state.filterStatus !== 'all') {
         const { isRechemeRoom } = useRoomUtils();
         result = result.filter((room: RoomData) => {
@@ -79,7 +77,6 @@ export const useRoomStore = defineStore('room', {
         });
       }
       
-      // 搜索过滤
       if (state.searchQuery) {
         const query = state.searchQuery.toLowerCase();
         const { isRechemeRoom } = useRoomUtils();
@@ -100,11 +97,9 @@ export const useRoomStore = defineStore('room', {
     },
     lastUpdatedText: (state) => {
       if (!state.lastUpdated) return '从未'
-      // 简化的时间格式化函数
       const now = new Date()
       const diff = now.getTime() - state.lastUpdated.getTime()
-      
-      // 转换为秒、分钟、小时
+
       const seconds = Math.floor(diff / 1000)
       
       if (seconds < 60) {
@@ -121,24 +116,19 @@ export const useRoomStore = defineStore('room', {
         return `${hours}小时前`
       }
       
-      // 如果超过一天，则显示具体日期和时间
       return state.lastUpdated.toLocaleString()
     }
   },
 
   actions: {
     async init() {
-      // 首次加载数据
       await this.fetchRooms()
-      
-      // 启动自动刷新
       if (this.autoRefreshEnabled) {
         this.startAutoRefresh()
       }
     },
     
     async fetchRooms() {
-      // 添加节流，避免频繁请求
       const now = Date.now()
       if (this.loading || now - this.lastFetchTime < 5000) return
       
@@ -146,7 +136,7 @@ export const useRoomStore = defineStore('room', {
       this.error = null
       try {
         const { data } = await fetchRoomList()
-        this.rooms = data || []  // 确保始终是数组
+        this.rooms = data || []
         this.lastUpdated = new Date()
         this.lastFetchTime = now
       } catch (error) {
@@ -160,12 +150,11 @@ export const useRoomStore = defineStore('room', {
     startAutoRefresh(interval = 30000) {
       this.stopAutoRefresh()
       this.refreshInterval = window.setInterval(() => {
-        if (!document.hidden) { // 只在页面可见时刷新
+        if (!document.hidden) {
           this.fetchRooms()
         }
       }, interval)
 
-      // 添加页面可见性变化监听
       document.addEventListener('visibilitychange', this.handleVisibilityChange)
     },
 
@@ -179,7 +168,7 @@ export const useRoomStore = defineStore('room', {
 
     handleVisibilityChange() {
       if (!document.hidden && this.refreshInterval) {
-        this.fetchRooms() // 页面变为可见时立即刷新一次
+        this.fetchRooms()
       }
     },
 

@@ -66,14 +66,19 @@
             >
               <template #header>
                 <div class="room-header">
-                  <n-tag :type="getRoomType(room) === 'recheme' ? 'success' : 'warning'" size="small">
-                    {{ getRoomType(room) === 'recheme' ? '录播姬' : 'BLREC' }}
-                  </n-tag>
-                  <span class="room-id">{{ getRoomId(room) }}</span>
+                  <div class="server-info">
+                    <n-tag :type="getRoomType(room) === 'recheme' ? 'success' : 'warning'" size="small">
+                      {{ getRoomType(room) === 'recheme' ? '录播姬' : 'BLREC' }}
+                    </n-tag>
+                    <span class="server-name">{{ room.recServer.recName }}</span>
+                  </div>
                 </div>
               </template>
               <div class="room-content">
-                <div class="room-name">{{ getRoomName(room) }}</div>
+                <div class="room-name-container">
+                  <span class="room-name">{{ getRoomName(room) }}</span>
+                  <span class="room-id">{{ getRoomId(room) }}</span>
+                </div>
                 <div class="room-title">{{ getRoomTitle(room) }}</div>
                 <div class="room-area">
                   <n-tag size="small">{{ getParentAreaName(room) }}</n-tag>
@@ -122,15 +127,13 @@ const roomStore = useRoomStore()
 const route = useRoute()
 const { message } = useGlobalService()
 
-// 房间详情状态
+// 房间详情
 const showDetail = ref(false)
 const selectedRoom = ref<RoomData | null>(null)
 
 // 计算属性
 const isLoading = computed(() => roomStore.loading)
 const filteredRooms = computed(() => roomStore.filteredRooms)
-
-// 虚拟列表相关
 const { containerRef, visibleItems, totalHeight, offsetY } = useVirtualList(
   computed(() => filteredRooms.value),
   {
@@ -140,17 +143,17 @@ const { containerRef, visibleItems, totalHeight, offsetY } = useVirtualList(
   }
 )
 
-// 类型守卫：检查是否是录播姬房间
+// 检查是录播姬房间
 function isRechemeRoom(room: RoomData): room is RoomInfo {
   return room && 'recServer' in room && room.recServer.recType === 'recheme';
 }
 
-// 获取房间类型
+// 房间类型
 function getRoomType(room: RoomData): 'recheme' | 'blrec' {
   return isRechemeRoom(room) ? 'recheme' : 'blrec';
 }
 
-// 获取唯一标识符作为key
+// 唯一标识符作为key
 function getUniqueKey(room: RoomData): string {
   if (isRechemeRoom(room)) {
     return `recheme-${room.roomId}`;
@@ -159,42 +162,42 @@ function getUniqueKey(room: RoomData): string {
   }
 }
 
-// 获取房间名称
+// 房间名称
 function getRoomName(room: RoomData): string {
   return isRechemeRoom(room) ? room.name : room.user_info.name;
 }
 
-// 获取房间ID
+// 房间ID
 function getRoomId(room: RoomData): number {
   return isRechemeRoom(room) ? room.roomId : room.room_info.room_id;
 }
 
-// 获取房间标题
+// 房间标题
 function getRoomTitle(room: RoomData): string {
   return isRechemeRoom(room) ? room.title : room.room_info.title;
 }
 
-// 获取父分区
+// 父分区
 function getParentAreaName(room: RoomData): string {
   return isRechemeRoom(room) ? room.areaNameParent : room.room_info.parent_area_name;
 }
 
-// 获取子分区
+// 子分区
 function getAreaName(room: RoomData): string {
   return isRechemeRoom(room) ? room.areaNameChild : room.room_info.area_name;
 }
 
-// 是否直播中
+// 直播中
 function isStreaming(room: RoomData): boolean {
   return isRechemeRoom(room) ? room.streaming : room.room_info.live_status === 1;
 }
 
-// 是否录制中
+// 录制中
 function isRecording(room: RoomData): boolean {
   return isRechemeRoom(room) ? room.recording : room.task_status.running_status === 'recording';
 }
 
-// 获取房间卡片的类名
+// 房间卡片类名
 const getRoomCardClass = (room: RoomData) => ({
   'room-card': true,
   'is-streaming': isStreaming(room),
@@ -207,7 +210,7 @@ const showRoomDetail = (room: RoomData) => {
   showDetail.value = true
 }
 
-// 处理房间更新
+// 房间更新
 const handleRoomUpdate = (room: RoomData) => {
   if (room) {
     message?.success('房间信息已更新')
@@ -215,20 +218,19 @@ const handleRoomUpdate = (room: RoomData) => {
   }
 }
 
-// 处理房间删除
+// 房间删除
 const handleRoomDeleted = (roomId: number) => {
   message?.success(`房间 ${roomId} 已删除`)
   roomStore.fetchRooms()
 }
 
-// 监听路由变化时重置筛选条件
+// 路由变化时重置筛选
 watch(() => route, () => {
   roomStore.setSearchQuery('')
   roomStore.setFilterType('all')
   roomStore.setFilterStatus('all')
 })
 
-// 生命周期钩子
 onMounted(() => {
   roomStore.init()
 })
@@ -308,14 +310,36 @@ onUnmounted(() => {
       display: flex;
       justify-content: space-between;
       align-items: center;
+
+      .server-info {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+
+        .server-name {
+          font-size: 12px;
+          color: var(--text-color-secondary);
+        }
+      }
     }
 
     .room-content {
-      .room-name {
-        font-size: 16px;
-        font-weight: bold;
+      .room-name-container {
+        display: flex;
+        align-items: center;
+        gap: 8px;
         margin-bottom: 8px;
-        color: var(--el-text-color-primary);
+
+        .room-name {
+          font-size: 16px;
+          font-weight: bold;
+          color: var(--text-color);
+        }
+
+        .room-id {
+          font-size: 12px;
+          color: var(--text-color-secondary);
+        }
       }
 
       .room-title {

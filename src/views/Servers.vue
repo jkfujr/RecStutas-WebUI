@@ -231,7 +231,7 @@ const { loading: roomLoading } = storeToRefs(roomStore)
 const loading = computed(() => serverLoading.value || roomLoading.value)
 
 const canAddServer = computed(() => {
-  return !authStore.authRequired || authStore.isAuthenticated
+  return authStore.isAuthenticated && !authStore.loading
 })
 
 const filteredServerData = computed(() => {
@@ -482,19 +482,19 @@ const serverRules = {
   }
 }
 
-// 填充批量添加示例数据
+// 示例数据
 function fillBatchExampleData() {
   batchFormModel.value.servers = JSON.stringify([
     {
       recType: "recheme",
-      recName: "Recorder1",
+      recName: "录播机名字11",
       url: "http://192.168.1.100:2356",
       manage: true,
       basic: false
     },
     {
       recType: "recheme",
-      recName: "SecureRecorder",
+      recName: "录播机名字4",
       url: "http://192.168.1.101:2356",
       manage: true,
       basic: true,
@@ -503,13 +503,13 @@ function fillBatchExampleData() {
     },
     {
       recType: "blrec",
-      recName: "BLRECMain",
+      recName: "录播机名字51",
       url: "http://192.168.1.200:2233",
       basic: false
     },
     {
       recType: "blrec",
-      recName: "SecureBLREC",
+      recName: "录播机名字4",
       url: "http://192.168.1.201:2233",
       basic: true,
       basicKey: "custom_secret_key"
@@ -639,7 +639,6 @@ function resetForms() {
   batchFormModel.value.servers = ''
 }
 
-// 刷新函数
 async function handleRefresh() {
   await Promise.all([
     serverStore.fetchServers(),
@@ -647,7 +646,6 @@ async function handleRefresh() {
   ])
 }
 
-// 修改最后更新时间显示
 const lastUpdatedText = computed(() => serverStore.lastUpdatedText)
 
 const handleCloseServerDetail = () => {
@@ -705,7 +703,6 @@ const deleteServerHandler = async (server: RecServer) => {
 // TODO
 // @ts-ignore
 const showRoomDetail = (room: RoomData) => {
-  // 先设置选中的房间，再显示详情
   selectedRoom.value = room
   nextTick(() => {
     showDetail.value = true
@@ -772,7 +769,6 @@ const showRoomDetail = (room: RoomData) => {
   }
 }
 
-// 暗色模式适配
 html.dark {
   .servers {
     .server-table {

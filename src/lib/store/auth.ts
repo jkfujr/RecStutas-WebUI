@@ -1,7 +1,6 @@
 import { defineStore } from 'pinia'
 import { globalService } from '@/lib/utils/globalService'
 
-// 定义登录响应数据的接口
 interface LoginResponse {
   token?: string
   auth_required?: boolean
@@ -64,12 +63,10 @@ export const useAuthStore = defineStore('auth', {
     async login(username: string, password: string) {
       this.loading = true
       this.error = null
-      
-      // 从全局服务获取消息组件，用于显示错误信息
+
       const { message } = globalService
       
       try {
-        // 只使用 JSON 格式登录
         const response = await fetch('/api/login', {
           method: 'POST',
           headers: {
@@ -79,7 +76,6 @@ export const useAuthStore = defineStore('auth', {
           body: JSON.stringify({ username, password })
         })
         
-        // 尝试解析响应
         let data: LoginResponse = {}
         try {
           data = await response.json()
@@ -87,20 +83,16 @@ export const useAuthStore = defineStore('auth', {
           console.error('解析登录响应失败:', e)
         }
         
-        // 处理登录结果
         if (response.ok) {
           if (data.token) {
-            // 登录成功，存储 token
             this.token = data.token
             localStorage.setItem('auth_token', data.token)
             message?.success('登录成功')
             return true
           } else {
-            // 服务器没有返回 token 但响应成功（可能认证未启用）
             return !data.auth_required
           }
         } else {
-          // 处理登录失败
           const errorMsg = this.extractErrorMessage(data)
           throw new Error(errorMsg)
         }
@@ -113,7 +105,7 @@ export const useAuthStore = defineStore('auth', {
       }
     },
     
-    // 辅助方法：从响应中提取错误信息
+    // 提取错误信息
     extractErrorMessage(data: LoginResponse): string {
       if (!data) return '登录失败'
       

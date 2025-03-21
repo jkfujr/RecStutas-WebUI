@@ -25,24 +25,18 @@ export const useServerStore = defineStore('server', {
       return state.lastUpdated.toLocaleTimeString()
     },
 
-    // 按类型过滤的服务器列表
     filteredServers: (state) => (type: 'all' | 'recheme' | 'blrec') => {
       if (type === 'all') return state.servers
       return state.servers.filter((server: RecServer) => server.recType === type)
     },
 
-    // 获取服务器统计信息
     serverStats: (state) => {
       const roomStore = useRoomStore()
       const { isStreaming, isRecording } = useRoomUtils()
-      
       return state.servers.map((server: RecServer) => {
-        // 找到属于这个服务器的所有房间
         const rooms = roomStore.rooms.filter((room: RoomData) => 
           room.recServer.recHost === server.recHost
         )
-
-        // 计算统计数据
         const stats = {
           totalRooms: rooms.length,
           streamingRooms: rooms.filter((room: RoomData) => isStreaming(room)).length,

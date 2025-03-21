@@ -20,13 +20,13 @@ export function useRoomUtils() {
     return room && 'user_info' in room && 'room_info' in room;
   }
 
-  // 获取类型
+  // 类型
   function getRoomType(room: RoomData): 'recheme' | 'blrec' | 'unknown' {
     if (!room) return 'unknown';
     return room.recServer.recType;
   }
 
-  // 获取key
+  // key
   function getUniqueKey(room: RoomData): string {
     if (isRechemeRoom(room)) {
       return room.objectId;
@@ -51,7 +51,7 @@ export function useRoomUtils() {
     };
   }
 
-  // 获取录播机信息
+  // 录播机信息
   function proxyToRecServer(
     rechemeFunc: (room: RoomInfo) => { name: string; type: 'recheme'; host: string },
     blrecFunc: (room: BlrecRoomInfo) => { name: string; type: 'blrec'; host: string }

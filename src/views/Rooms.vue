@@ -7,11 +7,32 @@
       <div class="room-container">
         <div class="filter-section">
           <div class="left">
-            <n-radio-group v-model:value="filterType" size="small" buttonStyle="solid" class="mr-2">
-              <n-radio-button value="all">全部</n-radio-button>
-              <n-radio-button value="recheme">录播姬</n-radio-button>
-              <n-radio-button value="blrec">BLREC</n-radio-button>
-            </n-radio-group>
+            <n-popover trigger="click" placement="bottom-start" :width="500">
+              <template #trigger>
+                <n-button size="small" class="mr-2">
+                  <template #icon>
+                    <n-icon><FilterOutline /></n-icon>
+                  </template>
+                  录播机筛选
+                  <template #suffix>
+                    <n-badge :value="selectedServers.length" :show="selectedServers.length > 0" />
+                  </template>
+                </n-button>
+              </template>
+              
+              <n-transfer
+                v-model:value="selectedServers"
+                :options="serverOptions"
+                :render-source-list="renderServerSourceList"
+                source-filterable
+                size="small"
+                style="width: 100%"
+                select-all-text="全选"
+                clear-text="清空"
+                source-filter-placeholder="请输入关键词搜索"
+                no-data-text="暂无数据"
+              />
+            </n-popover>
             
             <n-radio-group v-model:value="filterStatus" size="small" buttonStyle="solid" class="mr-2">
               <n-radio-button value="all">全部</n-radio-button>
@@ -20,7 +41,7 @@
             </n-radio-group>
             
             <n-button 
-              v-if="canAddRoom"
+              v-if="canAddRoom && serverStore.servers.length > 0"
               type="primary" 
               size="small" 
               @click="showAddRoomModal = true"
@@ -82,14 +103,19 @@
             >
               <template #header>
                 <div class="room-header">
-                  <n-tag :type="getRoomType(room) === 'recheme' ? 'success' : 'warning'" size="small">
-                    {{ getRoomType(room) === 'recheme' ? '录播姬' : 'BLREC' }}
-                  </n-tag>
-                  <span class="room-id">{{ getRoomId(room) }}</span>
+                  <div class="server-info">
+                    <n-tag :type="getRoomType(room) === 'recheme' ? 'success' : 'warning'" size="small">
+                      {{ getRoomType(room) === 'recheme' ? '录播姬' : 'BLREC' }}
+                    </n-tag>
+                    <span class="server-name">{{ room.recServer.recName }}</span>
+                  </div>
                 </div>
               </template>
               <div class="room-content">
-                <div class="room-name">{{ getRoomName(room) }}</div>
+                <div class="room-name-container">
+                  <span class="room-name">{{ getRoomName(room) }}</span>
+                  <span class="room-id">{{ getRoomId(room) }}</span>
+                </div>
                 <div class="room-title">{{ getRoomTitle(room) }}</div>
                 <div class="room-area">
                   <n-tag size="small">{{ getParentAreaName(room) }}</n-tag>
@@ -216,7 +242,7 @@
 
 <script setup lang="ts">
 // @ts-ignore
-import { SearchOutline, RefreshOutline, AddOutline, InformationCircleOutline, TrashOutline } from '@vicons/ionicons5'
+import { SearchOutline, RefreshOutline, AddOutline, InformationCircleOutline, TrashOutline, FilterOutline } from '@vicons/ionicons5'
 import { useRoomStore } from '@/lib/store/room'
 import { useServerStore } from '@/lib/store/server'
 import { useAuthStore } from '@/lib/store/auth'
@@ -226,6 +252,8 @@ import { useRoomUtils } from '@/lib/utils/useRoomUtils'
 // @ts-ignore
 import type { FormInst } from 'naive-ui'
 import { addRoom, addRoomsBatch, deleteRoom } from '@/lib/utils/api'
+import { NTree } from 'naive-ui'
+import type { TransferRenderSourceList, TreeOption } from 'naive-ui'
 
 const roomStore = useRoomStore()
 const serverStore = useServerStore()
@@ -275,35 +303,79 @@ const rules = {
   },
 }
 
-const recServerOptions = computed(() => {
-  const options: {label: string, value: string, disabled?: boolean}[] = []
-  
-  const servers = serverStore.servers.filter((server: RecServer) => server.recManage)
-  
-  if (formModel.value.recType === 'all') {
-    servers.forEach((server: RecServer) => {
-      const url = new URL(server.recHost)
-      options.push({
-        label: `${server.recType === 'recheme' ? '录播姬' : 'BLREC'} - ${server.recName} - ${url.hostname}${url.port ? `:${url.port}` : ''}`,
-        value: server.recName,
-        disabled: server.recStatus !== 'online'
-      })
-    })
-  } else {
-    servers
-      .filter((server: RecServer) => server.recType === formModel.value.recType)
-      .forEach((server: RecServer) => {
-        const url = new URL(server.recHost)
-        options.push({
-          label: `${server.recName} - ${url.hostname}${url.port ? `:${url.port}` : ''}`,
-          value: server.recName,
-          disabled: server.recStatus !== 'online'
-        })
-      })
-  }
+const selectedServers = ref<Array<string>>([])
 
-  return options
+const serverTreeData = computed(() => {
+  const treeData: any[] = [
+    {
+      label: '录播姬',
+      value: 'recheme-all',
+      key: 'recheme-all',
+      type: 'recheme',
+      children: []
+    },
+    {
+      label: 'BLREC',
+      value: 'blrec-all',
+      key: 'blrec-all',
+      type: 'blrec',
+      children: []
+    }
+  ]
+  
+  serverStore.servers.forEach((server: RecServer) => {
+    const parentNode = treeData.find(node => node.type === server.recType)
+    if (parentNode) {
+      parentNode.children.push({
+        label: server.recName,
+        value: `${server.recType}-${server.recName}`,
+        key: `${server.recType}-${server.recName}`,
+        type: server.recType,
+        isLeaf: true
+      })
+    }
+  })
+  
+  return treeData
 })
+
+const serverOptions = computed(() => {
+  const result: any[] = []
+  
+  function flatten(list: any[] = []) {
+    list.forEach(item => {
+      result.push({
+        label: item.label,
+        value: item.value,
+        disabled: false
+      })
+      
+      if (item.children && item.children.length) {
+        flatten(item.children)
+      }
+    })
+  }
+  
+  flatten(serverTreeData.value)
+  return result
+})
+
+const renderServerSourceList: TransferRenderSourceList = function ({ onCheck, pattern }) {
+  return h(NTree, {
+    style: 'margin: 0 4px;',
+    keyField: 'value',
+    checkable: true,
+    selectable: false,
+    blockLine: true,
+    checkOnClick: true,
+    data: serverTreeData.value as unknown as TreeOption[],
+    pattern,
+    checkedKeys: selectedServers.value,
+    onUpdateCheckedKeys: (checkedKeys: Array<string>) => {
+      onCheck(checkedKeys)
+    }
+  })
+}
 
 onMounted(async () => {
   if (serverStore.servers.length === 0) {
@@ -318,27 +390,33 @@ watch(() => formModel.value.recType, () => {
 // 筛选逻辑
 const filteredRooms = computed(() => {
   return roomStore.rooms.filter((room: RoomData) => {
-    // 1. 录播机类型
-    const typeMatch = filterType.value === 'all' || getRoomType(room) === filterType.value;
-
-    // 2. 房间状态
-    let statusMatch = true;
-    if (filterStatus.value === 'live') {
-      statusMatch = isStreaming(room);
-    } else if (filterStatus.value === 'recording') {
-      statusMatch = isRecording(room);
+    let serverMatch = true
+    
+    if (selectedServers.value.length > 0) {
+      const roomType = getRoomType(room)
+      const roomServerName = room.recServer?.recName || ''
+      const typeSelected = selectedServers.value.includes(`${roomType}-all`)
+      const serverSelected = selectedServers.value.includes(`${roomType}-${roomServerName}`)
+      
+      serverMatch = typeSelected || serverSelected
     }
 
-    // 3. 搜索关键词
-    const searchText = searchQuery.value.toLowerCase();
+    let statusMatch = true
+    if (filterStatus.value === 'live') {
+      statusMatch = isStreaming(room)
+    } else if (filterStatus.value === 'recording') {
+      statusMatch = isRecording(room)
+    }
+
+    const searchText = searchQuery.value.toLowerCase()
     const searchMatch = searchText === '' || 
       getRoomName(room).toLowerCase().includes(searchText) || 
       getRoomId(room).toString().includes(searchText) ||
-      getRoomTitle(room).toLowerCase().includes(searchText);
+      getRoomTitle(room).toLowerCase().includes(searchText)
 
-    return typeMatch && statusMatch && searchMatch;
-  });
-});
+    return serverMatch && statusMatch && searchMatch
+  })
+})
 
 const getRoomCardClass = (room: RoomData) => ({
   'room-card': true,
@@ -351,7 +429,6 @@ const showRoomDetail = (room: RoomData) => {
   showDetail.value = true
 }
 
-// 错误处理
 async function handleAddRoom() {
   if (!formRef.value) return
   
@@ -371,7 +448,6 @@ async function handleAddRoom() {
     
     console.log('[DEBUG] 处理房间号列表:', roomIds)
     
-    // 确定请求参数
     const recType = formModel.value.recType === 'all' ? undefined : formModel.value.recType as 'recheme' | 'blrec' | undefined
     const recNames: string[] = formModel.value.recName
     const autoRecord = formModel.value.autoRecord
@@ -563,14 +639,13 @@ async function handleDropdownSelect(key: string) {
   }
 }
 
-// 房间删除
 function handleRoomDeleted(roomId: number) {
   message.success(`房间 ${roomId} 已删除`)
   roomStore.fetchRooms()
 }
 
 const canAddRoom = computed(() => {
-  return !authStore.authRequired || authStore.isAuthenticated
+  return authStore.isAuthenticated && !authStore.loading
 })
 </script>
 
@@ -638,19 +713,38 @@ const canAddRoom = computed(() => {
 
     .room-header {
       display: flex;
+      justify-content: space-between;
       align-items: center;
-      gap: 8px;
 
-      .room-id {
-        color: var(--text-color-secondary);
-        font-size: 12px;
+      .server-info {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+
+        .server-name {
+          font-size: 12px;
+          color: var(--text-color-secondary);
+        }
       }
     }
 
     .room-content {
-      .room-name {
-        font-weight: bold;
-        margin-bottom: 4px;
+      .room-name-container {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        margin-bottom: 8px;
+
+        .room-name {
+          font-size: 16px;
+          font-weight: bold;
+          color: var(--text-color);
+        }
+
+        .room-id {
+          font-size: 12px;
+          color: var(--text-color-secondary);
+        }
       }
 
       .room-title {

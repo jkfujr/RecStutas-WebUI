@@ -17,6 +17,8 @@ Rec-NIC 今天也是咕咕咕的一天 108737089
 
 # 相关项目
 
+> RecStutas https://github.com/jkfujr/RecStutas
+>
 > BililiveRecorder https://github.com/Bililive/BililiveRecorder
 >
 > BililiveRecorder-WebUI https://github.com/BililiveRecorder/BililiveRecorder-WebUI
